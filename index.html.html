@@ -1,0 +1,449 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>Auftragserteilung</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      touch-action: manipulation;
+    }
+    h2 {
+      margin-top: 30px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
+    .section {
+      margin-top: 30px;
+      border-top: 1px solid #ccc;
+      padding-top: 20px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+    .row > div {
+      flex: 1;
+    }
+    button {
+      padding: 12px;
+      font-size: 16px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    #signature-preview {
+      border: 1px dashed #ccc;
+      width: 100%;
+      height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+      background: #f9f9f9;
+    }
+    #signature-preview img {
+      max-height: 100%;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: white;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      touch-action: none;
+      padding: 10px;
+    }
+    canvas {
+      width: 100%;
+      height: 60vh;
+      border: 1px solid #000;
+      touch-action: none;
+      background-color: white;
+    }
+    .button-bar {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Auftragserteilung</h1>
+
+<div class="section">
+  <h2>Unfalldaten</h2>
+  <label>Unfalldatum</label>
+  <input type="date" />
+  <label>Uhrzeit</label>
+  <input type="time" />
+  <label>Straße</label>
+  <input type="text" />
+  <div class="row">
+    <div><label>PLZ</label><input type="text" inputmode="numeric" /></div>
+    <div><label>Ort</label><input type="text" /></div>
+  </div>
+  <label>Polizeilich erfasst?</label>
+  <select id="polizei-erfasst" onchange="toggleAktenzeichen(this.value)">
+    <option>Nein</option>
+    <option>Ja</option>
+  </select>
+  <div id="aktenzeichen-container" style="display:none;">
+    <label>Aktenzeichen</label>
+    <input type="text" />
+  </div>
+</div>
+
+<div class="section">
+  <h2>Auftraggeber</h2>
+  <div class="row">
+    <div><label>Vorname</label><input type="text" /></div>
+    <div><label>Nachname</label><input type="text" /></div>
+  </div>
+  <label>Straße</label><input type="text" />
+  <div class="row">
+    <div><label>PLZ</label><input type="text" inputmode="numeric" /></div>
+    <div><label>Ort</label><input type="text" /></div>
+  </div>
+  <label>Fahrzeughersteller</label><input type="text" />
+  <label>Kennzeichen</label><input type="text" />
+  <label>E-Mail</label><input type="email" />
+  <label>Telefonnummer</label><input type="text" inputmode="numeric" />
+  <label>Gutachtennummer</label><input type="text" />
+  <label>Vorsteuerabzugsberechtigt?</label>
+  <select>
+    <option>Ja</option>
+    <option>Nein</option>
+    <option>Unbekannt</option>
+  </select>
+</div>
+
+<div class="section">
+  <h2>Versicherungsnehmer / Schädiger</h2>
+  <div class="row">
+    <div><label>Vorname</label><input type="text" /></div>
+    <div><label>Nachname</label><input type="text" /></div>
+  </div>
+  <label>Straße</label><input type="text" />
+  <div class="row">
+    <div><label>PLZ</label><input type="text" inputmode="numeric" /></div>
+    <div><label>Ort</label><input type="text" /></div>
+  </div>
+  <label>Fahrzeughersteller</label><input type="text" />
+  <label>Kennzeichen</label><input type="text" />
+  <label>Versicherung</label><input type="text" />
+  <label>Versicherungsnummer</label><input type="text" />
+  <label>Schadensnummer</label><input type="text" />
+</div>
+
+<div class="section">
+  <h2>Widerruf (nur außerhalb der Geschäftsräume)</h2>
+  <label><input type="checkbox" checked disabled /> Ich bestätige, dass ich die Widerrufsbelehrung und das Muster-Widerrufsformular erhalten habe.</label>
+  <label><input type="checkbox" checked disabled /> Erklärung zur Ausführung vor Ablauf der Widerrufsfrist in Kenntnis der Widerrufsbelehrung.</label>
+</div>
+
+<div class="section">
+  <h2>Unterschrift</h2>
+  <label>Ort der Unterschrift</label>
+  <input type="text" id="unterschrift-ort" placeholder="z. B. München" />
+  <button onclick="openModal()">Unterschrift hinzufügen</button>
+  <div id="signature-preview">Noch keine Unterschrift</div>
+</div>
+
+<div class="modal" id="signature-modal">
+  <h2>Bitte unterschreiben</h2>
+  <canvas id="signature-pad"></canvas>
+  <div class="button-bar">
+    <button onclick="clearPad()">Unterschrift löschen</button>
+    <button onclick="saveSignature()">Unterschrift speichern</button>
+    <button onclick="closeModal()">Abbrechen</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.6/dist/signature_pad.umd.min.js"></script>
+<script>
+  let signaturePad;
+  let canvas;
+
+  function toggleAktenzeichen(val) {
+    document.getElementById("aktenzeichen-container").style.display = val === "Ja" ? "block" : "none";
+  }
+
+  function openModal() {
+    const modal = document.getElementById("signature-modal");
+    modal.style.display = "flex";
+    canvas = document.getElementById("signature-pad");
+    resizeCanvas();
+    signaturePad = new SignaturePad(canvas);
+  }
+
+  function closeModal() {
+    document.getElementById("signature-modal").style.display = "none";
+  }
+
+  function clearPad() {
+    signaturePad.clear();
+  }
+
+  function saveSignature() {
+    if (signaturePad.isEmpty()) {
+      alert("Bitte unterschreiben!");
+      return;
+    }
+    const dataUrl = signaturePad.toDataURL();
+    document.getElementById("signature-preview").innerHTML = '<img src="' + dataUrl + '" alt="Unterschrift">';
+    closeModal();
+  }
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight * 0.6;
+  }
+
+  window.addEventListener("resize", () => {
+    if (document.getElementById("signature-modal").style.display === "flex") {
+      resizeCanvas();
+      signaturePad && signaturePad.clear();
+    }
+  });
+</script>
+<!-- PDF-Erstellungsbutton -->
+<!-- jsPDF & AutoTable -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<!-- PDF Button -->
+<button onclick="generatePDF()">📄 PDF erzeugen</button>
+
+<script>
+  async function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    let y = 20;
+// Rechte obere Ecke: Firmenadresse
+	doc.setFontSize(10);
+	doc.setFont(undefined, 'normal');
+	const firmenAdresse = [
+  		"T&C Ingenieure & Gutachter",
+  		"Ilkay Ibrahim Cardak",
+  		"Illungshofstraße 12",
+  		"80807 München"
+];
+firmenAdresse.forEach((zeile, i) => {
+  doc.text(zeile, 200, y + i * 5, { align: 'right' });
+});
+y += firmenAdresse.length * 5 + 4;
+	doc.setFontSize(16);
+	doc.setFont(undefined, 'bold');
+	const title = "Auftragserteilung";
+	const pageWidth = doc.internal.pageSize.getWidth();
+	const textWidth = doc.getTextWidth(title);
+	doc.text(title, (pageWidth - textWidth) / 2, y);
+	y += 10;
+
+     // Unfalldaten
+    doc.setFontSize(12);
+    doc.text("Unfalldaten", 10, y);
+    y += 6;
+    doc.setLineWidth(0.2);
+    doc.line(10, y, 200, y); y += 2;
+doc.setFontSize(12);
+    const unfall = [
+      ['Datum', document.querySelector('input[type="date"]').value], 
+      ['Uhrzeit', document.querySelector('input[type="time"]').value],
+      ['Straße', document.querySelectorAll('input[type="text"]')[0].value],
+      ['PLZ', document.querySelectorAll('input[type="text"]')[1].value],
+      ['Ort', document.querySelectorAll('input[type="text"]')[2].value],
+      ['Polizeilich erfasst?', document.getElementById("polizei-erfasst").value],
+    ];
+    if (document.getElementById("polizei-erfasst").value === "Ja") {
+      unfall.push(['Aktenzeichen', document.querySelectorAll('input[type="text"]')[3].value]);
+    }
+
+    doc.autoTable({
+      body: unfall,
+      theme: 'plain',
+      startY: y,
+      margin: { left: 10 },
+      styles: { cellPadding: 1.5, fontSize: 11 }
+    });
+
+    y = doc.lastAutoTable.finalY + 10;
+
+    // Auftraggeber & Schädiger
+    doc.setFontSize(12);
+    doc.text("Auftraggeber / Versicherungsnehmer", 10, y);
+    y += 6;
+    doc.line(10, y, 200, y); y += 5;
+
+    const inputs = document.querySelectorAll("input, select");
+    const auftraggeber = [
+      ['Vorname', inputs[7].value],
+      ['Nachname', inputs[8].value],
+      ['Straße', inputs[9].value],
+      ['PLZ', inputs[10].value],
+      ['Ort', inputs[11].value],
+      ['Fahrzeughersteller', inputs[12].value],
+      ['Kennzeichen', inputs[13].value],
+      ['E-Mail', inputs[14].value],
+      ['Telefonnummer', inputs[15].value],
+      ['Gutachtennummer', inputs[16].value],
+      ['Vorsteuerabzug', inputs[17].value]
+    ];
+    const schadiger = [
+      ['Vorname', inputs[18].value],
+      ['Nachname', inputs[19].value],
+      ['Straße', inputs[20].value],
+      ['PLZ', inputs[21].value],
+      ['Ort', inputs[22].value],
+      ['Fahrzeughersteller', inputs[23].value],
+      ['Kennzeichen', inputs[24].value],
+      ['Versicherung', inputs[25].value],
+      ['Versicherungsnummer', inputs[26].value],
+      ['Schadensnummer', inputs[27].value],
+    ];
+
+   doc.autoTable({
+  head: [['Auftraggeber', 'Schädiger']],
+  body: auftraggeber.map((a, i) => [a[0] + ": " + a[1], schadiger[i] ? schadiger[i][0] + ": " + schadiger[i][1] : ""]),
+  startY: y,
+  styles: { fontSize: 10, cellPadding: 1.5 },
+  columnStyles: { 0: { cellWidth: 95 }, 1: { cellWidth: 95 } },
+  margin: { left: 10 },
+  didParseCell: function (data) {
+    if (data.section === 'body') {
+      const content = data.cell.text[0];
+      // Eingabewert einfärben (nach dem Doppelpunkt)
+      if (content.includes(": ")) {
+        const parts = content.split(": ");
+        if (parts[1] && parts[1].trim() !== "") {
+          data.cell.styles.textColor = [0, 51, 153]; // Dunkelblau (RGB)
+        }
+      }
+    }
+  }
+});
+	
+   
+
+    y = doc.lastAutoTable.finalY + 7;
+
+    // Fließtext
+	doc.setFont(undefined, 'normal'); // ← zurück zu normaler Schrift
+	doc.setFontSize(8);
+    const absätze =[
+`Aus Anlass des oben beschriebenen Schadenfalles beauftrage ich das oben genannte KFZ-Sachverständigenbüro, ein Gutachten zur Schadenhöhe zu erstellen. Das Sachverständigenbüro berechnet sein Honorar in Anlehnung an die Schadenhöhe gemäß Honorartabelle des Sachverständigenbüros zzgl. erforderlicher Nebenkosten.`,
+`Ich trete hiermit meinen Schadensersatzanspruch auf Erstattung der Sachverständigenkosten in Höhe des Bruttoendbetrages der Rechnung des beauftragten Sachverständigenbüros - bzw. Nettoendbetrages bei Vorsteuerabzugsberechtigung - unwiderruflich erstrangig erfüllungshalber gegen den Fahrer, den Halter und den Versicherer des unfallbeteiligten Fahrzeuges an das KFZ-Sachverständigenbüro ab.`,
+`Hiermit weise ich den regulierungspflichtigen Versicherer an, die Sachverständigenkosten unmittelbar an das von mir beauftragte Sachverständigenbüro zu zahlen. Das KFZ-Sachverständigenbüro ist berechtigt, diese Abtretung den Anspruchsgegnern offen zu legen und den erfüllungshalber abgetretenen Anspruch auf Erstattung der Sachverständigenkosten gegenüber den Anspruchsgegnern im eigenen Namen geltend zu machen. Durch diese Abtretung werden die Ansprüche des KFZ-Sachverständigenbüros aus dem Sachverständigenvertrag gegen mich nicht berührt. Es kann die Ansprüche gegen mich geltend machen, wenn und soweit der regulierungspflichtige Versicherer keine Zahlung oder lediglich eine Teilzahlung leistet.`
+];
+    
+// Absatzweise Text einfügen mit Abstand zwischen den Absätzen
+absätze.forEach(absatz => {
+  const zeilen = doc.splitTextToSize(absatz, 180); // automatische Zeilenumbrüche bei 190mm Breite
+  doc.text(zeilen, 10, y);
+  y += zeilen.length * 4 + 0; // Zeilenhöhe + Abstand zwischen Absätzen
+});
+
+   // Unterschrift
+y += 7; // Abstand vor Unterschrift
+const unterschriftOrt = document.getElementById("unterschrift-ort").value || "";
+const datum = new Date().toLocaleDateString("de-DE");
+doc.text(`Ort: ${unterschriftOrt}`, 10, y);
+doc.text(`Datum: ${datum}`, 80, y);
+
+const signImg = document.querySelector("#signature-preview img");
+if (signImg) {
+  doc.addImage(signImg.src, 'PNG', 140, y - 6, 50, 20);
+}
+y += 12; // Abstand nach Unterschrift
+
+// Widerrufshinweis mit Seitenumbruch
+doc.setFontSize(8);
+
+
+// Seitenhöhe berechnen
+const pageHeight = doc.internal.pageSize.getHeight();
+
+// Vorschauhöhe des gesamten Widerrufblocks (Überschrift + Text)
+const widerrufText = `Wird der Vertrag außerhalb der Geschäftsräume des oben genannten Sachverständigenbüros geschlossen, haben Kunden, die Verbraucher sind, ein 14-tägiges Widerrufsrecht.
+
+Über die Bedingungen, die Fristen und das Verfahren für die Ausübung des Widerrufsrechts ist der Kunde vor Erteilung des Auftrages separat informiert worden.
+
+Ich bestätige, dass ich die Widerrufsbelehrung und das Muster-Widerrufsformular erhalten habe.
+
+Erklärung des Kunden zur Ausführung der beauftragten Arbeiten vor Ablauf der Widerrufsfrist: In Kenntnis der Widerrufsbelehrung fordere ich das beauftragte Sachverständigenbüro auf, mit der Gutachtenerstellung bereits vor Ablauf der Widerrufsfrist zu beginnen. Mir ist bewusst, dass ich bei vollständiger Vertragserfüllung durch den Unternehmer mein Widerrufsrecht verliere. 
+Mir ist weiter bewusst, dass ich für den Fall, dass ich vor vollständiger Vertragserfüllung den Vertrag widerrufe, für die bis zum Widerruf bereits erbrachten Leistungen einen Wertersatz zu leisten habe.`;
+
+const widerrufZeilen = doc.splitTextToSize(widerrufText, 180);
+
+// Überschrift + Abstand + Texthöhe abschätzen
+const geschätzteHöhe = 6 + widerrufZeilen.length * 4;
+if (y + geschätzteHöhe > pageHeight - 10) {
+  doc.addPage();
+  y = 20;
+}
+// Jetzt erst den Text einfügen
+doc.setFont(undefined, 'bold');
+doc.text("Nur bei Auftragserteilung außerhalb der Geschäftsräume", 10, y);
+y += 6;
+doc.setFont(undefined, 'normal');
+
+widerrufZeilen.forEach(line => {
+  if (y + 4 > pageHeight - 10) {
+    doc.addPage();
+    y = 20;
+  }
+  doc.text(line, 10, y);
+  y += 4;
+});
+    
+// Unterschrift unterhalb Widerrufsbelehrung
+y += 10; // Leerer Abstand vor der zweiten Unterschrift
+const unterschriftOrt2 = document.getElementById("unterschrift-ort").value || "";
+const datum2 = new Date().toLocaleDateString("de-DE");
+
+// Prüfe, ob Platz für Ort/Datum/Unterschrift vorhanden ist
+if (y + 20 > doc.internal.pageSize.getHeight() - 10) {
+  doc.addPage();
+  y = 20;
+}
+
+doc.text(`Ort: ${unterschriftOrt2}`, 10, y);
+doc.text(`Datum: ${datum2}`, 80, y);
+
+// Unterschrift ggf. kopieren
+const signImg2 = document.querySelector("#signature-preview img");
+if (signImg2) {
+  doc.addImage(signImg2.src, 'PNG', 140, y - 6, 50, 20);
+}
+y += 20;
+
+    doc.save("auftragserteilung.pdf");
+  }
+</script>
+
+
+</body>
+</html>

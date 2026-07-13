@@ -440,7 +440,14 @@ if (signImg2) {
 }
 y += 20;
 
-    doc.save("auftragserteilung.pdf");
+    const gutachtennummer = inputs[16].value.trim();
+const sichereGutachtennummer = gutachtennummer.replace(/[\\/:*?"<>|]/g, "-");
+
+const dateiname = sichereGutachtennummer
+  ? `Auftragserteilung-${sichereGutachtennummer}.pdf`
+  : "Auftragserteilung.pdf";
+
+doc.save(dateiname);
   }
 </script>
 
